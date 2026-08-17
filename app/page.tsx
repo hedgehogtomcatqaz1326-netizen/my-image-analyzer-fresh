@@ -23,7 +23,7 @@ export default function Home() {
       });
       const data = await res.json();
       const newEntry = { ...data, image: base64Image, timestamp: new Date().toLocaleString() };
-      setResult(data);
+      setResult(newEntry);
       const newHistory = [newEntry, ...history];
       setHistory(newHistory);
       localStorage.setItem("analyzeHistory", JSON.stringify(newHistory));
@@ -46,29 +46,63 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
+  // 履歴を1つずつ削除する
+  const deleteHistoryItem = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // 履歴タップイベントが発火するのを防ぐ
+    const newHistory = history.filter((_, i) => i !== index);
+    setHistory(newHistory);
+    localStorage.setItem("analyzeHistory", JSON.stringify(newHistory));
+  };
+
+  // すべての履歴を消去する
   const clearHistory = () => {
     if (confirm("すべての履歴を消去しますか？")) {
       setHistory([]);
       localStorage.removeItem("analyzeHistory");
+      setResult(null);
+      setImage("");
     }
+  };
+
+  // 履歴をタップして詳細を再表示する
+  const selectHistoryItem = (item: any) => {
+    setImage(item.image);
+    setResult(item);
   };
 
   return (
     <main className="max-w-md mx-auto p-4 space-y-6">
       <h1 className="text-xl font-bold text-center">AIカメラ即時解析</h1>
       
-      <label className="block w-full py-6 bg-blue-600 text-white font-bold text-center rounded-xl cursor-pointer">
+      <label className="block w-full py-6 bg-blue-600 text-white font-bold text-center rounded-xl cursor-pointer hover:bg-blue-700 transition">
         📷 撮影して解析する
         <input type="file" accept="image/*" capture="environment" onChange={handleCapture} className="hidden" />
       </label>
 
       {loading && <p className="text-center font-bold text-blue-600">AIが詳細解析中...</p>}
 
-      {/* 最新の結果 */}
+      {/* 現在表示中の結果（類似画像検索ボタン付き） */}
       {result && (
-        <div className="p-4 bg-green-50 border rounded-xl">
-          <h2 className="font-bold text-lg">{result.name}</h2>
-          <p className="text-sm mt-2">{result.summary}</p>
+        <div className="p-5 bg-green-50 border border-green-200 rounded-xl space-y-4 shadow-sm">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-green-900">{result.name}</h2>
+          </div>
+          <div className="text-gray-800 whitespace-pre-line text-sm leading-relaxed">{result.summary}</div>
+          {result.trivia && (
+            <p className="text-xs text-gray-600 italic bg-white p-3 rounded border">💡 {result.trivia}</p>
+          )}
+
+          {/* 類似画像検索ボタン */}
+          {result.searchQuery && (
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(result.searchQuery)}&tbm=isch`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-indigo-600 text-white text-center font-bold rounded-lg shadow hover:bg-indigo-700 transition"
+            >
+              🔍 この画像に類似したものを検索する
+            </a>
+          )}
         </div>
       )}
 
@@ -76,16 +110,33 @@ export default function Home() {
       <div className="border-t pt-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-bold">検索履歴 ({history.length})</h2>
-          <button onClick={clearHistory} className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded">履歴全消去</button>
+          {history.length > 0 && (
+            <button onClick={clearHistory} className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200">
+              履歴全消去
+            </button>
+          )}
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {history.map((item, i) => (
-            <div key={i} className="p-3 border rounded-lg flex gap-3 text-sm">
-              <img src={item.image} className="w-16 h-16 object-cover rounded" />
-              <div>
-                <p className="font-bold">{item.name}</p>
-                <p className="text-xs text-gray-500">{item.timestamp}</p>
+            <div 
+              key={i} 
+              onClick={() => selectHistoryItem(item)}
+              className="p-3 border rounded-lg flex items-center justify-between gap-3 text-sm bg-white hover:bg-gray-50 cursor-pointer shadow-sm transition"
+            >
+              <div className="flex items-center gap-3 overflow-hidden">
+                <img src={item.image} className="w-14 h-14 object-cover rounded shrink-0" />
+                <div className="truncate">
+                  <p className="font-bold truncate">{item.name}</p>
+                  <p className="text-xs text-gray-500">{item.timestamp}</p>
+                </div>
               </div>
+              <button 
+                onClick={(e) => deleteHistoryItem(i, e)}
+                className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded hover:bg-red-100 hover:text-red-600 shrink-0 transition"
+                title="この履歴を削除"
+              >
+                ✕
+              </button>
             </div>
           ))}
         </div>
