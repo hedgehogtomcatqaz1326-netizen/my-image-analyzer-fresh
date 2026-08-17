@@ -1,69 +1,72 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
 
 export default function Home() {
+  const [image, setImage] = useState<string>("");
+  const [lang, setLang] = useState("日本語");
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImage(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const execute = async () => {
+    if (!image) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image, language: lang }),
+      });
+      const data = await res.json();
+      setResult(data);
+    } catch (err) {
+      setResult({ error: "通信エラーが発生しました。" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="max-w-md mx-auto p-6 space-y-6 font-sans">
+      <h1 className="text-2xl font-bold text-center">AI画像解析システム</h1>
+      
+      <div className="space-y-2">
+        <label className="block font-medium">1. 画像を選ぶ（カメラ撮影可）</label>
+        <input type="file" accept="image/*" onChange={handleUpload} className="w-full border p-2 rounded" />
+      </div>
+
+      <div className="space-y-2">
+        <label className="block font-medium">2. 言語を選ぶ</label>
+        <select value={lang} onChange={(e) => setLang(e.target.value)} className="w-full p-2 border rounded">
+          {["日本語", "English", "中文", "한국어", "Português"].map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+      </div>
+
+      {image && !loading && (
+        <button onClick={execute} className="w-full p-4 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700">
+          解析を実行する
+        </button>
+      )}
+
+      {loading && <p className="text-center text-blue-600 font-bold">解析中...少々お待ちください</p>}
+
+      {result && !result.error && (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+          <h2 className="text-lg font-bold text-green-900">{result.name}</h2>
+          <div className="text-gray-800 whitespace-pre-line">{result.summary}</div>
+          <p className="text-sm text-gray-600 italic">💡 {result.trivia}</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+
+      {result?.error && <p className="text-red-600 text-center font-bold">{result.error}</p>}
+    </main>
   );
 }
