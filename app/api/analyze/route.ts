@@ -15,11 +15,11 @@ export async function POST(request: Request) {
           content: [
             { 
               type: "text", 
-              text: `この画像を解析し、日本語で以下のように簡潔にまとめてJSON形式のみで出力せよ。余計な説明は含めないこと。
-1. 商品・対象物名 (キー名: name)
-2. 特徴や用途を3行の箇条書き (キー名: summary)
-3. 注意点や豆知識を1行 (キー名: trivia)
-4. Google画像検索や類似商品を探すための検索キーワード・商品名 (キー名: searchQuery)` 
+              text: `この画像を専門家の視点で詳しく解析せよ。日本語で、以下のJSON形式のみで回答すること。
+1. 名称 (キー名: name)
+2. 詳細な解説と特徴（5行程度で詳しく） (キー名: summary)
+3. 豆知識や注意点 (キー名: trivia)
+4. 検索用キーワード (キー名: searchQuery)` 
             },
             { type: "image_url", image_url: { url: image } }
           ],
@@ -30,6 +30,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(JSON.parse(response.choices[0].message.content || "{}"));
   } catch (error) {
-    return NextResponse.json({ error: "解析に失敗しました。画像を確認して再試行してください。" }, { status: 500 });
+    return NextResponse.json({ error: "解析に失敗しました。" }, { status: 500 });
   }
 }
