@@ -10,7 +10,13 @@ export default function Home() {
   // 起動時に履歴を読み込む
   useEffect(() => {
     const saved = localStorage.getItem("analyzeHistory");
-    if (saved) setHistory(JSON.parse(saved));
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("履歴の読み込みに失敗しました", e);
+      }
+    }
   }, []);
 
   const executeAnalysis = async (base64Image: string) => {
@@ -22,13 +28,23 @@ export default function Home() {
         body: JSON.stringify({ image: base64Image }),
       });
       const data = await res.json();
-      const newEntry = { ...data, image: base64Image, timestamp: new Date().toLocaleString() };
+      
+      // 確実に必要なデータをまとめる
+      const newEntry = {
+        name: data.name || "名称不明",
+        summary: data.summary || "",
+        trivia: data.trivia || "",
+        searchQuery: data.searchQuery || data.name || "",
+        image: base64Image,
+        timestamp: new Date().toLocaleString()
+      };
+
       setResult(newEntry);
       const newHistory = [newEntry, ...history];
       setHistory(newHistory);
       localStorage.setItem("analyzeHistory", JSON.stringify(newHistory));
     } catch (err) {
-      alert("エラーが発生しました");
+      alert("通信エラーが発生しました");
     } finally {
       setLoading(false);
     }
@@ -48,7 +64,7 @@ export default function Home() {
 
   // 履歴を1つずつ削除する
   const deleteHistoryItem = (index: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // 履歴タップイベントが発火するのを防ぐ
+    e.stopPropagation();
     const newHistory = history.filter((_, i) => i !== index);
     setHistory(newHistory);
     localStorage.setItem("analyzeHistory", JSON.stringify(newHistory));
@@ -68,25 +84,30 @@ export default function Home() {
   const selectHistoryItem = (item: any) => {
     setImage(item.image);
     setResult(item);
+    // 画面上部にスムーズスクロール
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
     <main className="max-w-md mx-auto p-4 space-y-6">
       <h1 className="text-xl font-bold text-center">AIカメラ即時解析</h1>
       
-      <label className="block w-full py-6 bg-blue-600 text-white font-bold text-center rounded-xl cursor-pointer hover:bg-blue-700 transition">
+      <label className="block w-full py-6 bg-blue-600 text-white font-bold text-center rounded-xl cursor-pointer hover:bg-blue-700 transition shadow">
         📷 撮影して解析する
         <input type="file" accept="image/*" capture="environment" onChange={handleCapture} className="hidden" />
       </label>
 
       {loading && <p className="text-center font-bold text-blue-600">AIが詳細解析中...</p>}
 
-      {/* 現在表示中の結果（類似画像検索ボタン付き） */}
+      {/* 現在選択中・解析中の結果表示 */}
       {result && (
         <div className="p-5 bg-green-50 border border-green-200 rounded-xl space-y-4 shadow-sm">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-green-900">{result.name}</h2>
-          </div>
+          {image && (
+            <div className="flex justify-center">
+              <img src={image} alt="Selected" className="max-h-40 rounded-lg shadow border object-contain" />
+            </div>
+          )}
+          <h2 className="text-xl font-bold text-green-900 border-b pb-2">{result.name}</h2>
           <div className="text-gray-800 whitespace-pre-line text-sm leading-relaxed">{result.summary}</div>
           {result.trivia && (
             <p className="text-xs text-gray-600 italic bg-white p-3 rounded border">💡 {result.trivia}</p>
@@ -111,7 +132,7 @@ export default function Home() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-bold">検索履歴 ({history.length})</h2>
           {history.length > 0 && (
-            <button onClick={clearHistory} className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200">
+            <button onClick={clearHistory} className="text-xs bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 transition">
               履歴全消去
             </button>
           )}
@@ -124,7 +145,7 @@ export default function Home() {
               className="p-3 border rounded-lg flex items-center justify-between gap-3 text-sm bg-white hover:bg-gray-50 cursor-pointer shadow-sm transition"
             >
               <div className="flex items-center gap-3 overflow-hidden">
-                <img src={item.image} className="w-14 h-14 object-cover rounded shrink-0" />
+                <img src={item.image} className="w-14 h-14 object-cover rounded shrink-0 bg-gray-100" />
                 <div className="truncate">
                   <p className="font-bold truncate">{item.name}</p>
                   <p className="text-xs text-gray-500">{item.timestamp}</p>
